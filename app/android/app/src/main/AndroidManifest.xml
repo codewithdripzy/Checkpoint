@@ -1,4 +1,5 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <!-- Permissions for BLE and Background Discovery -->
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
@@ -12,6 +13,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
         android:label="checkpoint_app"
         android:name="${applicationName}"
@@ -45,6 +47,7 @@
             android:name="id.flutter.flutter_background_service.BackgroundService"
             android:foregroundServiceType="connectedDevice"
             android:exported="false"
+            tools:replace="android:exported"
         />
         
         <meta-data
