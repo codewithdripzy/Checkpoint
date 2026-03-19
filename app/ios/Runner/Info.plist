@@ -45,5 +45,29 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	
+	<!-- Background Modes -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>bluetooth-central</string>
+		<string>bluetooth-peripheral</string>
+		<string>fetch</string>
+		<string>location</string>
+		<string>processing</string>
+	</array>
+
+	<!-- Permission Descriptions -->
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Checkpoint needs Bluetooth access to detect nearby devices even when the app is in the background.</string>
+	<key>NSBluetoothPeripheralUsageDescription</key>
+	<string>Checkpoint needs Bluetooth access to advertise your presence to nearby devices.</string>
+	<key>NSContactsUsageDescription</key>
+	<string>Checkpoint needs contact access to identify which nearby devices belong to your friends.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Checkpoint needs location access to provide accurate proximity data in the background.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Checkpoint needs location access to detect nearby users.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>Checkpoint needs constant location access for background proximity monitoring.</string>
 </dict>
 </plist>

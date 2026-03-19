@@ -33,7 +33,7 @@ class AppTheme {
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(24),
-          side: BorderSide(color: Colors.white.withOpacity(0.05), width: 1),
+          side: BorderSide(color: Colors.white.withAlpha(5), width: 1),
         ),
       ),
       appBarTheme: const AppBarTheme(
@@ -46,10 +46,10 @@ class AppTheme {
 
   static BoxDecoration glassBoxDecoration() {
     return BoxDecoration(
-      color: Colors.white.withOpacity(0.05),
+      color: Colors.white.withAlpha(10),
       borderRadius: BorderRadius.circular(24),
-      border: BorderSide(
-        color: Colors.white.withOpacity(0.1),
+      border: Border.all(
+        color: Colors.white.withAlpha(10),
         width: 1,
       ),
     );

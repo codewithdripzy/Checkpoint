@@ -1,52 +1,64 @@
-# Checkpoint: Advanced Device Tracking and Location Sharing System
+# 🛰️ Checkpoint: Decentralized Proximity Network
 
-## Overview
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Flutter](https://img.shields.io/badge/Flutter-3.27-02569B?logo=flutter)](https://flutter.dev)
+[![Status](https://img.shields.io/badge/Status-Alpha-orange.svg)]()
 
-Checkpoint is a cutting-edge system designed for efficient device tracking using a combination of Peer-to-Peer (P2P) and Peer-to-Checkpoint (P2C) location sharing technologies. It aims to offer real-time location sharing, device recovery, and seamless interaction with various devices through an expansive network.
+> A cutting-edge, offline-first ecosystem for device tracking and contact discovery using Peer-to-Peer (P2P) and Peer-to-Checkpoint (P2C) mesh networking.
 
-### Technology
+---
 
-- **P2P (Peer-to-Peer):** When two Checkpoint users pass by each other, a secure and encrypted exchange of information occurs. This exchange includes location data, device identifiers, and optional user-configured alerts.
-- **P2C (Peer-to-Checkpoint):** Checkpoint’s network includes strategically placed checkpointers—highly responsive devices that collect and share data. These checkpointers, dispersed globally, transmit information like GPS coordinates to any user who comes within range.
+## 🌌 The Vision
 
-### Advantages
+Checkpoint is an open-source project designed to bridge the gap between digital identity and physical proximity. By utilizing device radio (Bluetooth Low Energy) and a global network of low-power "Checkpointers," we enable users to find lost devices and discover known contacts in their vicinity—**all without requiring an internet connection.**
 
-- **Device Recovery:** Effective for tracking and recovering stolen or lost devices.
-- **Real-Time Tracking:** Provides live location updates for devices equipped with Checkpoint pointers.
-- **Enhanced Security:** Utilizes encrypted communication to ensure data privacy and security.
-- **Global Reach:** With a network of checkpointers, Checkpoint offers extensive coverage and connectivity across various regions.
+## 🛠️ Integrated Modules
 
-### Prototype Design
+### 📱 Checkpoint Mobile (Flutter App)
+The primary user interface. Designed with a premium, high-fidelity dark aesthetic.
+- **Offline Contact Discovery**: Detects known contacts passing by using SHA-256 hashed identifiers.
+- **Radar Dashboard**: A real-time visual pulse showing nearby anonymous nodes and identified friends.
+- **Privacy-First**: No personal data (phone numbers, names) is ever broadcast in plain text.
 
-#### Mobile Device Pointers
+### 📡 Checkpointers (Hardware Layer)
+Distributed nodes acting as fixed location pointers.
+- **Global Mesh**: Strategically placed devices providing GPS and local data to passing users.
+- **Autonomous Power**: Designed for solar and kinetic energy harvesting.
 
-- **Pointer Chips:** Designed to be embedded in mobile devices, these chips connect to an efficient power source.
-- **Kinetic Battery:** Equipped with a tiny kinetic battery that charges through movement, providing power backup even when the primary power source is off or depleted.
-- **Power Management:** Optimized for low power consumption, ensuring long-term operation with minimal energy requirements.
+## 🏗️ Architecture & Security
 
-#### Checkpoint Devices
+Checkpoint operates on a decentralized trust model:
+1. **Hashing**: Each user’s identifier (phone number/email) is salted and hashed locally.
+2. **Advertising**: Devices broadcast a unique Service UUID and their hashed ID.
+3. **Collision Detection**: Nearby devices compare received hashes against local "Known Contact" buckets.
+4. **Encryption**: All P2P data exchanges are encrypted to prevent eavesdropping in public spaces.
 
-- **Design:** Solar-powered devices that update in real-time and use GPS satellite data for location accuracy.
-- **Real-Time Updates:** Capable of providing instant location information even when the user is on the move.
-- **High-Speed Communication:** Engineered for fast data reception and transmission when a user passes by, ensuring quick updates and interactions.
+## 🚀 Getting Started
 
-### Additional Features
+To dive into the mobile implementation:
 
-- **Custom Alerts:** Users can set personalized notifications for specific events, such as entering or leaving predefined zones.
-- **Geofencing:** Create virtual boundaries to trigger automatic actions when a device enters or exits these areas.
-- **Historical Tracking:** Access past location data for historical analysis and trend tracking.
-- **Integration with Other Systems:** Ability to integrate with existing security and tracking systems for enhanced functionality.
-- **User Feedback System:** Allows users to provide feedback on checkpointers and overall system performance for continuous improvement.
+```bash
+cd app
+flutter pub get
+flutter run
+```
 
-### Use Cases
+*For more details, see the [App README](app/README.md).*
 
-- **Lost Device Recovery:** Quickly locate lost or stolen devices with real-time tracking.
-- **Personal Safety:** Share location with trusted contacts for increased safety in various situations.
-- **Logistics and Fleet Management:** Monitor and manage vehicle fleets or valuable assets with precise location data.
-- **Travel and Exploration:** Track travel routes and explore new areas with confidence.
+## 🛣️ Roadmap
 
-### Future Enhancements
+- [x] BLE Proximity Prototype (Mobile)
+- [x] Secure Contact Hashing Engine
+- [ ] P2C Hardware Protocol Definition
+- [ ] End-to-End Encrypted Messaging (Offline)
+- [ ] AI-Powered Movement Prediction
 
-- **AI-Powered Analytics:** Incorporate machine learning algorithms to predict and analyze device movements and potential risks.
-- **Advanced Encryption:** Implement next-generation encryption standards to enhance data security and privacy.
-- **Community Checkpoint Deployment:** Encourage community-driven deployment of checkpointers to expand network coverage and improve system efficiency.
+## 🤝 Contributing
+
+We welcome thinkers, tinkerers, and builders. Check out our [Contributing Guide](CONTRIBUTING.md) to get started.
+
+---
+
+<p align="center">
+  Built with ❤️ by the Checkpoint Community.
+</p>
