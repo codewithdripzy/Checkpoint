@@ -15,7 +15,7 @@ class CheckpointBackgroundService {
       await service.configure(
         androidConfiguration: AndroidConfiguration(
           onStart: onStart,
-          autoStart: true,
+          autoStart: false,
           isForegroundMode: true,
           notificationChannelId: 'checkpoint_background',
           initialNotificationTitle: 'Checkpoint Radar',
@@ -23,7 +23,7 @@ class CheckpointBackgroundService {
           foregroundServiceTypes: [AndroidForegroundType.connectedDevice],
         ),
         iosConfiguration: IosConfiguration(
-          autoStart: true,
+          autoStart: false,
           onForeground: onStart,
           onBackground: onIosBackground,
         ),
@@ -32,6 +32,26 @@ class CheckpointBackgroundService {
       debugPrint('Background service configure failed: $e');
       debugPrintStack(stackTrace: st);
       rethrow;
+    }
+  }
+
+  static Future<void> startService() async {
+    final service = FlutterBackgroundService();
+    try {
+      await service.startService();
+    } catch (e, st) {
+      debugPrint('Background service startService failed: $e');
+      debugPrintStack(stackTrace: st);
+    }
+  }
+
+  static Future<void> stopService() async {
+    final service = FlutterBackgroundService();
+    try {
+      service.invoke('stopService');
+    } catch (e, st) {
+      debugPrint('Background service stopService failed: $e');
+      debugPrintStack(stackTrace: st);
     }
   }
 
@@ -55,7 +75,10 @@ class CheckpointBackgroundService {
       final nearbyProviderForBackground = NearbyProvider();
 
       // Start BLE logic in background
-      await bleService.startDiscovery(nearbyProviderForBackground);
+      await bleService.startDiscovery(
+        nearbyProviderForBackground,
+        requestPermissions: false,
+      );
 
       service.on('stopService').listen((event) {
         bleService.stopDiscovery();

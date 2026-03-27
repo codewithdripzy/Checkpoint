@@ -5,6 +5,7 @@ import '../utils/app_theme.dart';
 import '../widgets/radar_animation.dart';
 import '../services/ble_service.dart';
 import '../services/contact_service.dart';
+import '../services/background_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -26,16 +27,20 @@ class _HomeScreenState extends State<HomeScreen> {
     await ContactService.syncContacts();
   }
 
-  void _toggleScanning(BuildContext context) {
+  Future<void> _toggleScanning(BuildContext context) async {
     final provider = context.read<NearbyProvider>();
     final isCurrentlyScanning = provider.isScanning;
 
-    provider.setScanning(!isCurrentlyScanning);
-
     if (!isCurrentlyScanning) {
-      _bleService.startDiscovery(provider);
+      final started = await _bleService.startDiscovery(provider);
+      provider.setScanning(started);
+      if (started) {
+        await CheckpointBackgroundService.startService();
+      }
     } else {
       _bleService.stopDiscovery();
+      provider.setScanning(false);
+      await CheckpointBackgroundService.stopService();
     }
   }
 
@@ -169,7 +174,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton.large(
-        onPressed: () => _toggleScanning(context),
+        onPressed: () async => _toggleScanning(context),
         backgroundColor: AppTheme.primaryNeon,
         child: Icon(
           context.watch<NearbyProvider>().isScanning ? Icons.stop : Icons.radar,

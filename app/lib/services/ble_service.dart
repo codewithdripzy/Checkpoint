@@ -38,11 +38,16 @@ class BleService {
     return _hasBleRuntimePermissions();
   }
 
-  Future<void> startDiscovery(NearbyProvider provider) async {
+  Future<bool> startDiscovery(
+    NearbyProvider provider, {
+    bool requestPermissions = true,
+  }) async {
     try {
-      final granted = await _hasBleRuntimePermissions() ||
-          await _requestBleRuntimePermissions();
-      if (!granted) return;
+      var granted = await _hasBleRuntimePermissions();
+      if (!granted && requestPermissions) {
+        granted = await _requestBleRuntimePermissions();
+      }
+      if (!granted) return false;
 
       // 1. Start Advertising (Peripheral Role)
       final advertiseData = AdvertiseData(
@@ -53,7 +58,7 @@ class BleService {
       await FlutterBlePeripheral().start(advertiseData: advertiseData);
 
       // 2. Start Scanning (Central Role)
-      if (await FlutterBluePlus.isSupported == false) return;
+      if (await FlutterBluePlus.isSupported == false) return false;
 
       // Listen to scan results
       _scanSubscription = FlutterBluePlus.onScanResults.listen((results) async {
@@ -77,9 +82,11 @@ class BleService {
         withServices: [Guid(serviceUuid)],
         timeout: const Duration(seconds: 15),
       );
+      return true;
     } catch (_) {
       // Ignore BLE startup failures to avoid app-level crash on unsupported states/devices.
       stopDiscovery();
+      return false;
     }
   }
 
