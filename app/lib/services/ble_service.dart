@@ -167,6 +167,14 @@ class BleService {
 
     // ── 5. Start scan
     try {
+      // Pre-flight check: is GPS turned off system-wide?
+      if (Platform.isAndroid) {
+        final locEnabled = await Permission.location.serviceStatus.isEnabled;
+        if (!locEnabled) {
+          return (BleStartResult.locationOff, null);
+        }
+      }
+
       await FlutterBluePlus.startScan(
         withServices: [Guid(serviceUuid)],
         timeout: const Duration(seconds: 30),
@@ -177,7 +185,14 @@ class BleService {
       debugPrint('[BLE] startScan threw: $e');
       debugPrintStack(stackTrace: st);
       stopDiscovery();
-      return (BleStartResult.error, e.toString());
+      
+      String errorMsg = e.toString();
+      // Catch platform exceptions related to location services being disabled
+      if (errorMsg.toLowerCase().contains('location')) {
+        return (BleStartResult.locationOff, null);
+      }
+
+      return (BleStartResult.error, errorMsg);
     }
   }
 
@@ -206,5 +221,6 @@ enum BleStartResult {
   success,
   permissionDenied,
   bluetoothOff,
+  locationOff,
   error,
 }

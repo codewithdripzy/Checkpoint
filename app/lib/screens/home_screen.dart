@@ -47,7 +47,6 @@ class _HomeScreenState extends State<HomeScreen>
 
   Future<void> _toggleScanning(BuildContext context) async {
     final provider = context.read<NearbyProvider>();
-    final messenger = ScaffoldMessenger.of(context); // capture before async gap
     final isCurrentlyScanning = provider.isScanning;
 
     if (!isCurrentlyScanning) {
@@ -58,24 +57,110 @@ class _HomeScreenState extends State<HomeScreen>
       if (result == BleStartResult.success) {
         provider.setScanning(true);
         await CheckpointBackgroundService.startService();
-      } else if (mounted) {
-        final message = switch (result) {
-          BleStartResult.permissionDenied =>
-            'Bluetooth permissions are required. Please grant them in Settings.',
-          BleStartResult.bluetoothOff =>
-            'Please turn on Bluetooth and try again.',
-          _ =>
-            errorMsg != null ? 'Failed: $errorMsg' : 'Failed to start scanning. Check logcat for details.',
-        };
-        messenger.showSnackBar(
-          SnackBar(content: Text(message)),
-        );
+      } else {
+        if (!context.mounted) return;
+        _showRequirementModal(context, result, errorMsg);
       }
     } else {
       _bleService.stopDiscovery();
       provider.setScanning(false);
       await CheckpointBackgroundService.stopService();
     }
+  }
+
+  void _showRequirementModal(BuildContext context, BleStartResult result, String? error) {
+    IconData icon;
+    String title;
+    String message;
+
+    switch (result) {
+      case BleStartResult.locationOff:
+        icon = Icons.location_off_rounded;
+        title = 'Location Services Off';
+        message = 'Android requires Location (GPS) to be turned on to scan for nearby Bluetooth devices.\n\nPlease pull down your quick settings and turn it on.';
+        break;
+      case BleStartResult.bluetoothOff:
+        icon = Icons.bluetooth_disabled_rounded;
+        title = 'Bluetooth is Off';
+        message = 'Please turn on Bluetooth to start the radar.';
+        break;
+      case BleStartResult.permissionDenied:
+        icon = Icons.gpp_maybe_rounded;
+        title = 'Permission Required';
+        message = 'Checkpoint needs Bluetooth and Location permissions to detect nearby contacts.\n\nPlease grant them in your device settings.';
+        break;
+      default:
+        icon = Icons.error_outline_rounded;
+        title = 'Radar Failed';
+        message = error ?? 'An unknown error occurred while starting the radar.';
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppTheme.surfaceBlue,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+          side: const BorderSide(color: AppTheme.borderBlue, width: 1),
+        ),
+        contentPadding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppTheme.amber.withValues(alpha: 0.15),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: AppTheme.amber, size: 36),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              title,
+              style: const TextStyle(
+                color: AppTheme.white,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppTheme.offWhite.withValues(alpha: 0.8),
+                fontSize: 14,
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 28),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Navigator.of(context).pop(),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.amber,
+                  foregroundColor: AppTheme.midnight,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  elevation: 0,
+                ),
+                child: const Text(
+                  'Understood',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override

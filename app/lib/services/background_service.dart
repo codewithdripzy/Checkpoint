@@ -17,7 +17,6 @@ class CheckpointBackgroundService {
           onStart: onStart,
           autoStart: false,
           isForegroundMode: true,
-          notificationChannelId: 'checkpoint_background',
           initialNotificationTitle: 'Checkpoint Radar',
           initialNotificationContent: 'Scanning for nearby contacts...',
           foregroundServiceTypes: [AndroidForegroundType.connectedDevice],
