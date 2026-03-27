@@ -1,6 +1,6 @@
 {
-    "name": "checkpoint",
-    "short_name": "checkpoint",
+    "name": "Checkpoint",
+    "short_name": "Checkpoint",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
