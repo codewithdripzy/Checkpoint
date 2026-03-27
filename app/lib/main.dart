@@ -9,14 +9,21 @@ import 'utils/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // Initialize Background Service
-  await CheckpointBackgroundService.initializeService();
-  
+  try {
+    await CheckpointBackgroundService.initializeService();
+  } catch (e, st) {
+    debugPrint('Background service initialization failed: $e');
+    debugPrintStack(stackTrace: st);
+  }
+
   // Initialize Hive
   await Hive.initFlutter();
-  Hive.registerAdapter(ContactHashAdapter());
-  
+  if (!Hive.isAdapterRegistered(0)) {
+    Hive.registerAdapter(ContactHashAdapter());
+  }
+
   // Run the app with providers
   runApp(
     MultiProvider(
