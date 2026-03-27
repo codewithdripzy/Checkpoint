@@ -1,6 +1,6 @@
 {
-    "name": "checkpoint_app",
-    "short_name": "checkpoint_app",
+    "name": "checkpoint",
+    "short_name": "checkpoint",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

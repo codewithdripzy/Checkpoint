@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "com.checkpoint" "\0"
-            VALUE "FileDescription", "checkpoint_app" "\0"
+            VALUE "FileDescription", "checkpoint" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "checkpoint_app" "\0"
+            VALUE "InternalName", "checkpoint" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 com.checkpoint. All rights reserved." "\0"
-            VALUE "OriginalFilename", "checkpoint_app.exe" "\0"
-            VALUE "ProductName", "checkpoint_app" "\0"
+            VALUE "OriginalFilename", "checkpoint.exe" "\0"
+            VALUE "ProductName", "checkpoint" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END
