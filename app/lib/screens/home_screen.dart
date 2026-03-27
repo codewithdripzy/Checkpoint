@@ -107,10 +107,12 @@ class _HomeScreenState extends State<HomeScreen>
             onPressed: () async {
               if (controller.text.isNotEmpty) {
                 await ContactService.saveMyNumber(controller.text);
-                if (context.mounted) Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Identity secured. Restarting radar...')),
-                );
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Identity secured. Restarting radar...')),
+                  );
+                }
               }
             },
             child: const Text('Save'),
