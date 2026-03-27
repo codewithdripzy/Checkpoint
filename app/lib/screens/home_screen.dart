@@ -47,13 +47,26 @@ class _HomeScreenState extends State<HomeScreen>
 
   Future<void> _toggleScanning(BuildContext context) async {
     final provider = context.read<NearbyProvider>();
+    final messenger = ScaffoldMessenger.of(context); // capture before async gap
     final isCurrentlyScanning = provider.isScanning;
 
     if (!isCurrentlyScanning) {
-      final started = await _bleService.startDiscovery(provider);
-      provider.setScanning(started);
-      if (started) {
+      final result = await _bleService.startDiscoveryWithResult(provider);
+      if (result == BleStartResult.success) {
+        provider.setScanning(true);
         await CheckpointBackgroundService.startService();
+      } else if (mounted) {
+        final message = switch (result) {
+          BleStartResult.permissionDenied =>
+            'Bluetooth permissions are required. Please grant them in Settings.',
+          BleStartResult.bluetoothOff =>
+            'Please turn on Bluetooth and try again.',
+          _ =>
+            'Unable to start radar. Ensure Bluetooth is ON and permissions are granted.',
+        };
+        messenger.showSnackBar(
+          SnackBar(content: Text(message)),
+        );
       }
     } else {
       _bleService.stopDiscovery();
@@ -100,8 +113,20 @@ class _HomeScreenState extends State<HomeScreen>
           ],
         ),
         actions: [
+          IconButton(
+            icon: Icon(Icons.history_rounded,
+                color: AppTheme.offWhite.withValues(alpha: 0.65), size: 22),
+            tooltip: 'History',
+            onPressed: () {},
+          ),
+          IconButton(
+            icon: Icon(Icons.settings_rounded,
+                color: AppTheme.offWhite.withValues(alpha: 0.65), size: 22),
+            tooltip: 'Settings',
+            onPressed: () {},
+          ),
           Padding(
-            padding: const EdgeInsets.only(right: 16),
+            padding: const EdgeInsets.only(right: 12),
             child: _StatusBadge(isScanning: isScanning),
           ),
         ],
@@ -169,23 +194,7 @@ class _HomeScreenState extends State<HomeScreen>
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     child: _ScanButton(
                       isScanning: isScanning,
-                      onTap: () async {
-                        final messenger = ScaffoldMessenger.of(context);
-                        final provider = context.read<NearbyProvider>();
-                        final wasScanning = provider.isScanning;
-                        await _toggleScanning(context);
-                        final nowScanning = provider.isScanning;
-
-                        if (!wasScanning && !nowScanning && mounted) {
-                          messenger.showSnackBar(
-                            SnackBar(
-                              content: const Text(
-                                'Unable to start radar. Ensure Bluetooth is ON and permissions are granted.',
-                              ),
-                            ),
-                          );
-                        }
-                      },
+                      onTap: () => _toggleScanning(context),
                     ),
                   ),
 
@@ -223,19 +232,19 @@ class _HomeScreenState extends State<HomeScreen>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           // Drag handle
-                          Center(
-                            child: Padding(
-                              padding: const EdgeInsets.only(top: 12, bottom: 8),
-                              child: Container(
-                                width: 36,
-                                height: 4,
-                                decoration: BoxDecoration(
-                                  color: AppTheme.borderBlue,
-                                  borderRadius: BorderRadius.circular(2),
-                                ),
-                              ),
-                            ),
-                          ),
+                          // Center(
+                          //   child: Padding(
+                          //     padding: const EdgeInsets.only(top: 12, bottom: 8),
+                          //     child: Container(
+                          //       width: 36,
+                          //       height: 4,
+                          //       decoration: BoxDecoration(
+                          //         color: AppTheme.borderBlue,
+                          //         borderRadius: BorderRadius.circular(2),
+                          //       ),
+                          //     ),
+                          //   ),
+                          // ),
 
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -323,36 +332,6 @@ class _HomeScreenState extends State<HomeScreen>
           ],
         ),
       ),
-
-      // ── Bottom nav
-      bottomNavigationBar: Container(
-        height: 64,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [AppTheme.deepBlue, AppTheme.midnight],
-          ),
-          border: Border(
-            top: BorderSide(color: AppTheme.borderBlue, width: 1),
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            _NavItem(
-              icon: Icons.history_rounded,
-              label: 'History',
-              onTap: () {},
-            ),
-            _NavItem(
-              icon: Icons.settings_rounded,
-              label: 'Settings',
-              onTap: () {},
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
@@ -396,7 +375,7 @@ class _StatusBadge extends StatelessWidget {
             isScanning ? 'LIVE' : 'IDLE',
             style: TextStyle(
               color: isScanning ? AppTheme.amber : AppTheme.offWhite,
-              fontSize: 10,
+              fontSize: 7.5,
               fontWeight: FontWeight.w700,
               letterSpacing: 1.5,
             ),
@@ -420,8 +399,7 @@ class _ScanButton extends StatelessWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 350),
         curve: Curves.easeOutBack,
-        padding:
-            const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
         decoration: BoxDecoration(
           gradient: isScanning
               ? LinearGradient(
@@ -485,8 +463,8 @@ class _ContactTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppTheme.royalBlue.withValues(alpha: 0.18),
         borderRadius: BorderRadius.circular(16),
-        border:
-            Border.all(color: AppTheme.borderBlue.withValues(alpha: 0.5), width: 1),
+        border: Border.all(
+            color: AppTheme.borderBlue.withValues(alpha: 0.5), width: 1),
       ),
       child: Row(
         children: [
@@ -499,7 +477,8 @@ class _ContactTile extends StatelessWidget {
               gradient: LinearGradient(
                 colors: [AppTheme.royalBlue, AppTheme.deepBlue],
               ),
-              border: Border.all(color: AppTheme.amber.withValues(alpha: 0.6), width: 1.5),
+              border: Border.all(
+                  color: AppTheme.amber.withValues(alpha: 0.6), width: 1.5),
             ),
             child: Center(
               child: Text(
@@ -547,45 +526,6 @@ class _ContactTile extends StatelessWidget {
                 size: 12, color: AppTheme.offWhite),
           ),
         ],
-      ),
-    );
-  }
-}
-
-// ── Bottom nav item
-class _NavItem extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-  const _NavItem(
-      {required this.icon, required this.label, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, color: AppTheme.offWhite.withValues(alpha: 0.6), size: 22),
-              const SizedBox(height: 3),
-              Text(
-                label,
-                style: TextStyle(
-                  color: AppTheme.offWhite.withValues(alpha: 0.45),
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.5,
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }
