@@ -14,13 +14,31 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen>
+    with SingleTickerProviderStateMixin {
   final BleService _bleService = BleService();
+  late AnimationController _fadeController;
+  late Animation<double> _fadeAnimation;
 
   @override
   void initState() {
     super.initState();
+    _fadeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+    _fadeAnimation = CurvedAnimation(
+      parent: _fadeController,
+      curve: Curves.easeOut,
+    );
+    _fadeController.forward();
     _syncContacts();
+  }
+
+  @override
+  void dispose() {
+    _fadeController.dispose();
+    super.dispose();
   }
 
   Future<void> _syncContacts() async {
@@ -46,187 +64,527 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isScanning = context.watch<NearbyProvider>().isScanning;
+
     return Scaffold(
       extendBodyBehindAppBar: true,
+      backgroundColor: AppTheme.midnight,
       appBar: AppBar(
-        title: Text(
-          'CHECKPOINT',
-          style: TextStyle(
-            letterSpacing: 4,
-            fontWeight: FontWeight.w900,
-            color: AppTheme.primaryNeon,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: true,
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Miniature icon logo inline with title
+            Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                color: AppTheme.royalBlue,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.wifi_tethering,
+                  color: AppTheme.white, size: 18),
+            ),
+            const SizedBox(width: 10),
+            Text(
+              'CHECKPOINT',
+              style: TextStyle(
+                letterSpacing: 4,
+                fontWeight: FontWeight.w900,
+                fontSize: 17,
+                color: AppTheme.white,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: _StatusBadge(isScanning: isScanning),
           ),
+        ],
+      ),
+      body: FadeTransition(
+        opacity: _fadeAnimation,
+        child: Stack(
+          children: [
+            // ── Background gradient
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    AppTheme.deepBlue,
+                    AppTheme.midnight,
+                    AppTheme.midnight,
+                  ],
+                  stops: const [0.0, 0.45, 1.0],
+                ),
+              ),
+            ),
+
+            // ── Ambient glow behind radar
+            Positioned(
+              top: MediaQuery.of(context).size.height * 0.12,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Container(
+                  width: 340,
+                  height: 340,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: RadialGradient(
+                      colors: [
+                        AppTheme.royalBlue.withValues(alpha: 0.22),
+                        AppTheme.amber.withValues(alpha: 0.06),
+                        Colors.transparent,
+                      ],
+                      stops: const [0.0, 0.5, 1.0],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            // ── Main content
+            SafeArea(
+              child: Column(
+                children: [
+                  const SizedBox(height: 12),
+
+                  // ── Radar area
+                  Expanded(
+                    flex: 5,
+                    child: Center(
+                      child: RadarAnimation(),
+                    ),
+                  ),
+
+                  // ── Scan button
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: _ScanButton(
+                      isScanning: isScanning,
+                      onTap: () async {
+                        final messenger = ScaffoldMessenger.of(context);
+                        final provider = context.read<NearbyProvider>();
+                        final wasScanning = provider.isScanning;
+                        await _toggleScanning(context);
+                        final nowScanning = provider.isScanning;
+
+                        if (!wasScanning && !nowScanning && mounted) {
+                          messenger.showSnackBar(
+                            SnackBar(
+                              content: const Text(
+                                'Unable to start radar. Ensure Bluetooth is ON and permissions are granted.',
+                              ),
+                            ),
+                          );
+                        }
+                      },
+                    ),
+                  ),
+
+                  // ── Nearby panel
+                  Expanded(
+                    flex: 4,
+                    child: Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.only(top: 8),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            AppTheme.surfaceBlue.withValues(alpha: 0.98),
+                            AppTheme.deepBlue.withValues(alpha: 0.95),
+                          ],
+                        ),
+                        borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(36)),
+                        border: Border(
+                          top: BorderSide(
+                              color: AppTheme.borderBlue.withValues(alpha: 0.6),
+                              width: 1),
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppTheme.royalBlue.withValues(alpha: 0.25),
+                            blurRadius: 40,
+                            offset: const Offset(0, -10),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Drag handle
+                          Center(
+                            child: Padding(
+                              padding: const EdgeInsets.only(top: 12, bottom: 8),
+                              child: Container(
+                                width: 36,
+                                height: 4,
+                                decoration: BoxDecoration(
+                                  color: AppTheme.borderBlue,
+                                  borderRadius: BorderRadius.circular(2),
+                                ),
+                              ),
+                            ),
+                          ),
+
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 24),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'NEARBY CONTACTS',
+                                  style: TextStyle(
+                                    color: AppTheme.amber,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 2.5,
+                                  ),
+                                ),
+                                Consumer<NearbyProvider>(
+                                  builder: (_, p, __) => Text(
+                                    '${p.discoveredContacts.length} found',
+                                    style: TextStyle(
+                                      color: AppTheme.offWhite
+                                          .withValues(alpha: 0.5),
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          const SizedBox(height: 12),
+
+                          Expanded(
+                            child: Consumer<NearbyProvider>(
+                              builder: (context, provider, child) {
+                                if (provider.discoveredContacts.isEmpty) {
+                                  return Center(
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          isScanning
+                                              ? Icons.sensors
+                                              : Icons.sensors_off,
+                                          color: AppTheme.borderBlue,
+                                          size: 40,
+                                        ),
+                                        const SizedBox(height: 12),
+                                        Text(
+                                          isScanning
+                                              ? 'Scanning for connections...'
+                                              : 'Radar offline.\nStart scan to detect contacts.',
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            color: AppTheme.offWhite
+                                                .withValues(alpha: 0.45),
+                                            fontSize: 14,
+                                            height: 1.5,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }
+                                return ListView.builder(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 16),
+                                  itemCount: provider.discoveredContacts.length,
+                                  itemBuilder: (context, index) {
+                                    final contact =
+                                        provider.discoveredContacts[index];
+                                    return _ContactTile(contact: contact);
+                                  },
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
-      body: Stack(
+
+      // ── Bottom nav
+      bottomNavigationBar: Container(
+        height: 64,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [AppTheme.deepBlue, AppTheme.midnight],
+          ),
+          border: Border(
+            top: BorderSide(color: AppTheme.borderBlue, width: 1),
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _NavItem(
+              icon: Icons.history_rounded,
+              label: 'History',
+              onTap: () {},
+            ),
+            _NavItem(
+              icon: Icons.settings_rounded,
+              label: 'Settings',
+              onTap: () {},
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Status badge (top-right)
+class _StatusBadge extends StatelessWidget {
+  final bool isScanning;
+  const _StatusBadge({required this.isScanning});
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 400),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: isScanning
+            ? AppTheme.amber.withValues(alpha: 0.15)
+            : AppTheme.borderBlue.withValues(alpha: 0.25),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isScanning
+              ? AppTheme.amber.withValues(alpha: 0.5)
+              : AppTheme.borderBlue,
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          // Background Glow
-          Positioned(
-            top: -100,
-            left: -50,
-            child: Container(
-              width: 500,
-              height: 320,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 400),
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: isScanning ? AppTheme.amber : AppTheme.borderBlue,
+            ),
+          ),
+          const SizedBox(width: 5),
+          Text(
+            isScanning ? 'LIVE' : 'IDLE',
+            style: TextStyle(
+              color: isScanning ? AppTheme.amber : AppTheme.offWhite,
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Centered scan/stop button
+class _ScanButton extends StatelessWidget {
+  final bool isScanning;
+  final VoidCallback onTap;
+  const _ScanButton({required this.isScanning, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeOutBack,
+        padding:
+            const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+        decoration: BoxDecoration(
+          gradient: isScanning
+              ? LinearGradient(
                   colors: [
-                    AppTheme.primaryNeon.withValues(alpha: 0.15),
-                    AppTheme.secondaryNeon.withValues(alpha: 0.10),
-                    Colors.transparent,
+                    AppTheme.amber,
+                    AppTheme.amberLight,
                   ],
+                )
+              : LinearGradient(
+                  colors: [
+                    AppTheme.royalBlue,
+                    AppTheme.deepBlue,
+                  ],
+                ),
+          borderRadius: BorderRadius.circular(50),
+          boxShadow: [
+            BoxShadow(
+              color: isScanning
+                  ? AppTheme.amber.withValues(alpha: 0.40)
+                  : AppTheme.royalBlue.withValues(alpha: 0.40),
+              blurRadius: 20,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isScanning ? Icons.stop_rounded : Icons.radar_rounded,
+              color: isScanning ? AppTheme.midnight : AppTheme.white,
+              size: 20,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              isScanning ? 'Stop Radar' : 'Start Radar',
+              style: TextStyle(
+                color: isScanning ? AppTheme.midnight : AppTheme.white,
+                fontWeight: FontWeight.w700,
+                fontSize: 15,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Contact tile card
+class _ContactTile extends StatelessWidget {
+  final dynamic contact;
+  const _ContactTile({required this.contact});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: AppTheme.royalBlue.withValues(alpha: 0.18),
+        borderRadius: BorderRadius.circular(16),
+        border:
+            Border.all(color: AppTheme.borderBlue.withValues(alpha: 0.5), width: 1),
+      ),
+      child: Row(
+        children: [
+          // Avatar
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                colors: [AppTheme.royalBlue, AppTheme.deepBlue],
+              ),
+              border: Border.all(color: AppTheme.amber.withValues(alpha: 0.6), width: 1.5),
+            ),
+            child: Center(
+              child: Text(
+                contact.name[0].toUpperCase(),
+                style: const TextStyle(
+                  color: AppTheme.white,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 16,
                 ),
               ),
             ),
           ),
-
-          Column(
-            children: [
-              const SizedBox(height: 120),
-
-              // Radar Area
-              Expanded(
-                flex: 3,
-                child: Center(
-                  child: RadarAnimation(),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  contact.name,
+                  style: const TextStyle(
+                    color: AppTheme.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
+                  ),
                 ),
-              ),
+                const SizedBox(height: 2),
+                Text(
+                  'Passed just now',
+                  style: TextStyle(
+                    color: AppTheme.offWhite.withValues(alpha: 0.5),
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              color: AppTheme.royalBlue.withValues(alpha: 0.4),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.arrow_forward_ios,
+                size: 12, color: AppTheme.offWhite),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
-              // Nearby List
-              Expanded(
-                flex: 2,
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  decoration: BoxDecoration(
-                    color: AppTheme.cardDark.withValues(alpha: 0.95),
-                    borderRadius:
-                        const BorderRadius.vertical(top: Radius.circular(40)),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppTheme.primaryNeon.withValues(alpha: 0.10),
-                        blurRadius: 30,
-                        offset: const Offset(0, -6),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 20),
-                      Text(
-                        'NEARBY CONTACTS',
-                        style: TextStyle(
-                          color: AppTheme.textSecondary,
-                          fontSize: 12,
-                          letterSpacing: 2,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Expanded(
-                        child: Consumer<NearbyProvider>(
-                          builder: (context, provider, child) {
-                            if (provider.discoveredContacts.isEmpty) {
-                              return Center(
-                                child: Text(
-                                  provider.isScanning
-                                      ? 'Scanning for connections...'
-                                      : 'Radar offline. Start scan to find contacts.',
-                                  textAlign: TextAlign.center,
-                                  style:
-                                      TextStyle(color: AppTheme.textSecondary),
-                                ),
-                              );
-                            }
-                            return ListView.builder(
-                              itemCount: provider.discoveredContacts.length,
-                              itemBuilder: (context, index) {
-                                final contact =
-                                    provider.discoveredContacts[index];
-                                return Padding(
-                                  padding: const EdgeInsets.only(bottom: 12),
-                                  child: Card(
-                                    child: ListTile(
-                                      leading: CircleAvatar(
-                                        backgroundColor: AppTheme.primaryNeon
-                                            .withValues(alpha: 0.1),
-                                        child: Text(
-                                          contact.name[0],
-                                          style: TextStyle(
-                                              color: AppTheme.primaryNeon),
-                                        ),
-                                      ),
-                                      title: Text(
-                                        contact.name,
-                                        style: TextStyle(
-                                            fontWeight: FontWeight.bold),
-                                      ),
-                                      subtitle: Text(
-                                        'Passed just now',
-                                        style: TextStyle(
-                                            color: AppTheme.textSecondary,
-                                            fontSize: 12),
-                                      ),
-                                      trailing: Icon(Icons.arrow_forward_ios,
-                                          size: 14,
-                                          color: AppTheme.textSecondary),
-                                    ),
-                                  ),
-                                );
-                              },
-                            );
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
+// ── Bottom nav item
+class _NavItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  const _NavItem(
+      {required this.icon, required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: AppTheme.offWhite.withValues(alpha: 0.6), size: 22),
+              const SizedBox(height: 3),
+              Text(
+                label,
+                style: TextStyle(
+                  color: AppTheme.offWhite.withValues(alpha: 0.45),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.5,
                 ),
               ),
             ],
           ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.small(
-        onPressed: () async {
-          final messenger = ScaffoldMessenger.of(context);
-          final provider = context.read<NearbyProvider>();
-          final wasScanning = provider.isScanning;
-          await _toggleScanning(context);
-          final isScanning = provider.isScanning;
-
-          if (!wasScanning && !isScanning && mounted) {
-            messenger.showSnackBar(
-              const SnackBar(
-                content: Text(
-                  'Unable to start radar. Ensure Bluetooth is ON and permissions are granted.',
-                ),
-              ),
-            );
-          }
-        },
-        backgroundColor: AppTheme.secondaryNeon,
-        child: Icon(
-          context.watch<NearbyProvider>().isScanning ? Icons.stop : Icons.radar,
-          color: AppTheme.primaryNeon,
-        ),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      bottomNavigationBar: BottomAppBar(
-        height: 60,
-        color: Colors.white,
-        shape: const CircularNotchedRectangle(),
-        notchMargin: 10,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            IconButton(
-                icon: Icon(Icons.history, color: AppTheme.textSecondary),
-                onPressed: () {}),
-            const SizedBox(width: 40),
-            IconButton(
-                icon: Icon(Icons.settings, color: AppTheme.textSecondary),
-                onPressed: () {}),
-          ],
         ),
       ),
     );
