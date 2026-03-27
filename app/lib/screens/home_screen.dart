@@ -62,7 +62,7 @@ class _HomeScreenState extends State<HomeScreen>
           BleStartResult.bluetoothOff =>
             'Please turn on Bluetooth and try again.',
           _ =>
-            'Unable to start radar. Ensure Bluetooth is ON and permissions are granted.',
+            'Failed to start scanning. Check logcat for details.',
         };
         messenger.showSnackBar(
           SnackBar(content: Text(message)),
@@ -106,7 +106,7 @@ class _HomeScreenState extends State<HomeScreen>
               style: TextStyle(
                 letterSpacing: 4,
                 fontWeight: FontWeight.w900,
-                fontSize: 17,
+                fontSize: 15,
                 color: AppTheme.white,
               ),
             ),
@@ -247,7 +247,7 @@ class _HomeScreenState extends State<HomeScreen>
                           // ),
 
                           Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 24),
+                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10.0),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
