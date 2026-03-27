@@ -1,10 +1,13 @@
 import 'dart:io';
 import 'dart:async';
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:flutter_ble_peripheral/flutter_ble_peripheral.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:geolocator/geolocator.dart';
 import 'contact_service.dart';
+import '../models/contact_hash.dart';
 import '../providers/nearby_provider.dart';
 
 class BleService {
@@ -130,32 +133,99 @@ class BleService {
       return (BleStartResult.bluetoothOff, e.toString());
     }
 
-    // ── 3. Advertising (non-fatal — many devices don't support peripheral mode)
+    // ── 3. Advertising
     try {
+      // Try to get current position for v2 map features
+      Position? pos;
+      try {
+        pos = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.low,
+          timeLimit: const Duration(seconds: 3),
+        ).timeout(const Duration(seconds: 3));
+      } catch (_) {}
+
+      final myHash = await ContactService.getMyHash();
+      Uint8List? payloadBytes;
+      
+      if (myHash != null) {
+        final hashFull = hexToBytes(myHash);
+        final builder = BytesBuilder();
+        
+        // Use 10 bytes for hash to save space for GPS
+        builder.add(hashFull.sublist(0, 10));
+
+        if (pos != null) {
+          final bdata = ByteData(8);
+          bdata.setFloat32(0, pos.latitude);
+          bdata.setFloat32(4, pos.longitude);
+          builder.add(bdata.buffer.asUint8List());
+        }
+        payloadBytes = builder.toBytes();
+      }
+
       final advertiseData = AdvertiseData(
         serviceUuid: serviceUuid,
         localName: 'Checkpoint-Node',
+        serviceData: payloadBytes, 
       );
       await FlutterBlePeripheral().start(advertiseData: advertiseData);
-      debugPrint('[BLE] Advertising started');
+      debugPrint('[BLE] Advertising started (identity=${myHash != null}, gps=${pos != null})');
     } catch (e) {
-      // Log but continue — the device may not support peripheral mode.
-      // Scanning can still work to find other advertising nodes.
-      debugPrint('[BLE] Advertising failed (non-fatal, continuing): $e');
+      debugPrint('[BLE] Advertising failed: $e');
     }
 
     // ── 4. Scan subscription
     try {
       _scanSubscription =
           FlutterBluePlus.onScanResults.listen((results) async {
-        final expectedServiceGuid = Guid(serviceUuid);
+        final expectedGuid = Guid(serviceUuid);
         for (final r in results) {
-          if (r.advertisementData.serviceUuids.contains(expectedServiceGuid)) {
-            const foundHash = 'simulated_contact_hash_abc';
-            final contact = await ContactService.findContactByHash(foundHash);
-            if (contact != null) {
-              provider.addFoundContact(contact);
+          final bool isCheckpoint =
+              r.advertisementData.serviceUuids.contains(expectedGuid) ||
+              r.advertisementData.serviceData.containsKey(expectedGuid);
+
+          if (isCheckpoint) {
+            final String deviceId = r.device.remoteId.toString();
+            String displayName = r.advertisementData.advName;
+
+            // Try to resolve matching identity if hash is present
+            final discoveredData = r.advertisementData.serviceData[expectedGuid];
+            double? lat;
+            double? lon;
+
+            if (discoveredData != null && discoveredData.length >= 10) {
+              final hashPart = Uint8List.fromList(discoveredData.sublist(0, 10));
+              final String foundHashHex = bytesToHex(hashPart);
+              
+              // Extract Lat/Lon if present (starting at byte 10)
+              if (discoveredData.length >= 18) {
+                try {
+                  final bdata = ByteData.sublistView(Uint8List.fromList(discoveredData), 10, 18);
+                  lat = bdata.getFloat32(0);
+                  lon = bdata.getFloat32(4);
+                } catch (_) {}
+              }
+
+              // Search in local contact list
+              final contact = await _resolveContact(foundHashHex);
+              if (contact != null) {
+                displayName = contact.name;
+              }
             }
+            if (displayName.isEmpty) {
+              try {
+                displayName = r.device.platformName;
+              } catch (_) {}
+            }
+            if (displayName.isEmpty) displayName = 'Checkpoint User';
+
+            provider.addFoundContact(ContactHash(
+              hash: deviceId,
+              name: displayName,
+              lastSeen: DateTime.now(),
+              latitude: lat,
+              longitude: lon,
+            ));
           }
         }
       });
@@ -176,8 +246,7 @@ class BleService {
       }
 
       await FlutterBluePlus.startScan(
-        withServices: [Guid(serviceUuid)],
-        timeout: const Duration(seconds: 30),
+        timeout: null, // Continuous scanning
       );
       debugPrint('[BLE] Scan started successfully');
       return (BleStartResult.success, null);
@@ -214,6 +283,35 @@ class BleService {
     try {
       FlutterBlePeripheral().stop();
     } catch (_) {}
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // Identity Helpers
+  // ─────────────────────────────────────────────────────────────
+
+  Future<ContactHash?> _resolveContact(String incomingHash) async {
+    // We try to match the incoming hash (potentially truncated)
+    // against our local hashed_contacts box.
+    try {
+      final box = await ContactService.getHashedContactsBox();
+      for (var key in box.keys) {
+        if (key.toString().startsWith(incomingHash)) {
+          return box.get(key);
+        }
+      }
+    } catch (e) {
+      debugPrint('[BLE] _resolveContact error: $e');
+    }
+    return null;
+  }
+
+  Uint8List hexToBytes(String hex) {
+    return Uint8List.fromList(
+        List.generate(hex.length ~/ 2, (i) => int.parse(hex.substring(i * 2, i * 2 + 2), radix: 16)));
+  }
+
+  String bytesToHex(Uint8List bytes) {
+    return bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
   }
 }
 

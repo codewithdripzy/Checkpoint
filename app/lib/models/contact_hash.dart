@@ -16,10 +16,18 @@ class ContactHash extends HiveObject {
   @HiveField(3)
   final DateTime lastSeen;
 
+  @HiveField(4)
+  final double? latitude;
+  
+  @HiveField(5)
+  final double? longitude;
+
   ContactHash({
     required this.hash,
     required this.name,
     this.phoneNumber,
     required this.lastSeen,
+    this.latitude,
+    this.longitude,
   });
 }

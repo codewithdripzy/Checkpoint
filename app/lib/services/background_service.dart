@@ -79,6 +79,28 @@ class CheckpointBackgroundService {
         requestPermissions: false,
       );
 
+      // Listener for when the radar finds someone while in background
+      nearbyProviderForBackground.addListener(() {
+        if (service is AndroidServiceInstance) {
+          final count = nearbyProviderForBackground.discoveredContacts.length;
+          if (count > 0) {
+            service.setAsForegroundService();
+            // We use the notification update to 'pop' a change to the user
+            service.invoke('update', {
+              "contacts": nearbyProviderForBackground.discoveredContacts
+                  .map((c) => {
+                        "hash": c.hash,
+                        "name": c.name,
+                        "lastSeen": c.lastSeen.toIso8601String(),
+                        "latitude": c.latitude,
+                        "longitude": c.longitude,
+                      })
+                  .toList(),
+            });
+          }
+        }
+      });
+
       service.on('stopService').listen((event) {
         bleService.stopDiscovery();
         service.stopSelf();
@@ -94,9 +116,17 @@ class CheckpointBackgroundService {
           }
         }
 
-        // We could broadcast discovered contacts back to the main UI here
+        // Broadcast discovered contacts back to the main UI
         service.invoke('update', {
-          "count": nearbyProviderForBackground.discoveredContacts.length,
+          "contacts": nearbyProviderForBackground.discoveredContacts
+                  .map((c) => {
+                        "hash": c.hash,
+                        "name": c.name,
+                        "lastSeen": c.lastSeen.toIso8601String(),
+                        "latitude": c.latitude,
+                        "longitude": c.longitude,
+                      })
+              .toList(),
         });
       });
     } catch (e, st) {

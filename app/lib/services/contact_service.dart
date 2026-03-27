@@ -35,19 +35,47 @@ class ContactService {
   }
 
   static String _normalizePhone(String phone) {
-    // Remove non-numeric characters except leading plus
-    return phone.replaceAll(RegExp(r'[^0-9+]'), '');
+    // 1. Keep only digits
+    String digits = phone.replaceAll(RegExp(r'[^0-9]'), '');
+    
+    // 2. Handle Nigerian leading 0 (replace with 234)
+    if (digits.startsWith('0') && digits.length == 11) {
+      digits = '234${digits.substring(1)}';
+    }
+    
+    // 3. Ensure no '+' remains (already handled by digit regex, but for clarity)
+    return digits;
+  }
+
+  static String generateHash(String phone) {
+    // Public wrapper for sharing
+    return _generateHash(_normalizePhone(phone));
   }
 
   static String _generateHash(String phone) {
-    // Note: In production, we'd add a salt and more robust normalization
     final bytes = utf8.encode(phone);
     final digest = sha256.convert(bytes);
     return digest.toString();
   }
 
+  static Future<void> saveMyNumber(String phone) async {
+    final box = await Hive.openBox('profile');
+    final hash = generateHash(phone);
+    await box.put('my_hash', hash);
+    await box.put('my_phone', _normalizePhone(phone));
+  }
+
+  static Future<String?> getMyHash() async {
+    final box = await Hive.openBox('profile');
+    return box.get('my_hash');
+  }
+
+  static Future<Box<ContactHash>> getHashedContactsBox() async {
+    return await Hive.openBox<ContactHash>(boxName);
+  }
+
   static Future<ContactHash?> findContactByHash(String hash) async {
-    final box = await Hive.openBox<ContactHash>(boxName);
+    final box = await getHashedContactsBox();
     return box.get(hash);
   }
 }

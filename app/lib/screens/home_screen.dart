@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../models/contact_hash.dart';
 import '../providers/nearby_provider.dart';
 import '../utils/app_theme.dart';
 import '../widgets/radar_animation.dart';
 import '../services/ble_service.dart';
 import '../services/contact_service.dart';
+import 'package:flutter_background_service/flutter_background_service.dart';
 import '../services/background_service.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -33,6 +35,108 @@ class _HomeScreenState extends State<HomeScreen>
     );
     _fadeController.forward();
     _syncContacts();
+    _setupBackgroundListener();
+    _checkProfile();
+  }
+
+  void _checkProfile() async {
+    final myHash = await ContactService.getMyHash();
+    if (myHash == null && mounted) {
+      _showProfileModal(context, isFirstTime: true);
+    }
+  }
+
+  void _showProfileModal(BuildContext context, {bool isFirstTime = false}) {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      barrierDismissible: !isFirstTime,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppTheme.surfaceBlue,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+          side: const BorderSide(color: AppTheme.borderBlue, width: 1),
+        ),
+        title: Text(
+          isFirstTime ? 'Set Your Identity' : 'My Identity',
+          style: const TextStyle(color: AppTheme.white, fontSize: 18),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Enter your phone number to be discovered by your contacts safely.',
+              style: TextStyle(
+                color: AppTheme.offWhite.withValues(alpha: 0.6),
+                fontSize: 13,
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: controller,
+              keyboardType: TextInputType.phone,
+              style: const TextStyle(color: AppTheme.white),
+              decoration: InputDecoration(
+                hintText: 'e.g. 08132961144',
+                hintStyle: TextStyle(color: AppTheme.offWhite.withValues(alpha: 0.3)),
+                filled: true,
+                fillColor: AppTheme.midnight.withValues(alpha: 0.5),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppTheme.borderBlue),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppTheme.borderBlue),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel', style: TextStyle(color: AppTheme.offWhite.withValues(alpha: 0.6))),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.amber,
+              foregroundColor: AppTheme.midnight,
+            ),
+            onPressed: () async {
+              if (controller.text.isNotEmpty) {
+                await ContactService.saveMyNumber(controller.text);
+                if (context.mounted) Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Identity secured. Restarting radar...')),
+                );
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _setupBackgroundListener() {
+    FlutterBackgroundService().on('update').listen((event) {
+      if (!mounted) return;
+      if (event != null && event.containsKey('contacts')) {
+        final provider = context.read<NearbyProvider>();
+        final List<dynamic> contacts = event['contacts'];
+        for (var c in contacts) {
+          provider.addFoundContact(ContactHash(
+            hash: c['hash'] ?? '',
+            name: c['name'] ?? 'Checkpoint User',
+            lastSeen: DateTime.tryParse(c['lastSeen'] ?? '') ?? DateTime.now(),
+            latitude: c['latitude'] as double?,
+            longitude: c['longitude'] as double?,
+          ));
+        }
+      }
+    });
   }
 
   @override
@@ -202,17 +306,17 @@ class _HomeScreenState extends State<HomeScreen>
         ),
         actions: [
           IconButton(
+            icon: Icon(Icons.person_pin_rounded,
+                color: AppTheme.amber.withValues(alpha: 0.8), size: 24),
+            tooltip: 'My Profile',
+            onPressed: () => _showProfileModal(context),
+          ),
+          IconButton(
             icon: Icon(Icons.history_rounded,
                 color: AppTheme.offWhite.withValues(alpha: 0.65), size: 22),
             tooltip: 'History',
             onPressed: () {},
           ),
-          // IconButton(
-          //   icon: Icon(Icons.settings_rounded,
-          //       color: AppTheme.offWhite.withValues(alpha: 0.65), size: 22),
-          //   tooltip: 'Settings',
-          //   onPressed: () {},
-          // ),
           Padding(
             padding: const EdgeInsets.only(right: 12),
             child: _StatusBadge(isScanning: isScanning),

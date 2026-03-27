@@ -21,13 +21,15 @@ class ContactHashAdapter extends TypeAdapter<ContactHash> {
       name: fields[1] as String,
       phoneNumber: fields[2] as String?,
       lastSeen: fields[3] as DateTime,
+      latitude: fields[4] as double?,
+      longitude: fields[5] as double?,
     );
   }
 
   @override
   void write(BinaryWriter writer, ContactHash obj) {
     writer
-      ..writeByte(4)
+      ..writeByte(6)
       ..writeByte(0)
       ..write(obj.hash)
       ..writeByte(1)
@@ -35,7 +37,11 @@ class ContactHashAdapter extends TypeAdapter<ContactHash> {
       ..writeByte(2)
       ..write(obj.phoneNumber)
       ..writeByte(3)
-      ..write(obj.lastSeen);
+      ..write(obj.lastSeen)
+      ..writeByte(4)
+      ..write(obj.latitude)
+      ..writeByte(5)
+      ..write(obj.longitude);
   }
 
   @override
