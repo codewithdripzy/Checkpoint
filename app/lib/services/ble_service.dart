@@ -96,7 +96,7 @@ class BleService {
   // ─────────────────────────────────────────────────────────────
   // Start discovery
   // ─────────────────────────────────────────────────────────────
-  Future<BleStartResult> startDiscoveryWithResult(
+  Future<(BleStartResult, String?)> startDiscoveryWithResult(
     NearbyProvider provider,
   ) async {
     // ── 1. Permissions
@@ -111,11 +111,11 @@ class BleService {
 
       if (!granted) {
         debugPrint('[BLE] Returning permissionDenied');
-        return BleStartResult.permissionDenied;
+        return (BleStartResult.permissionDenied, null);
       }
     } catch (e) {
       debugPrint('[BLE] Permission check threw: $e');
-      return BleStartResult.permissionDenied;
+      return (BleStartResult.permissionDenied, e.toString());
     }
 
     // ── 2. Bluetooth adapter
@@ -123,11 +123,11 @@ class BleService {
       final bluetoothReady = await _ensureBluetoothReady();
       if (!bluetoothReady) {
         debugPrint('[BLE] Adapter not ready → returning bluetoothOff');
-        return BleStartResult.bluetoothOff;
+        return (BleStartResult.bluetoothOff, null);
       }
     } catch (e) {
       debugPrint('[BLE] Adapter check threw: $e');
-      return BleStartResult.bluetoothOff;
+      return (BleStartResult.bluetoothOff, e.toString());
     }
 
     // ── 3. Advertising (non-fatal — many devices don't support peripheral mode)
@@ -162,7 +162,7 @@ class BleService {
     } catch (e) {
       debugPrint('[BLE] onScanResults listener setup failed: $e');
       stopDiscovery();
-      return BleStartResult.error;
+      return (BleStartResult.error, e.toString());
     }
 
     // ── 5. Start scan
@@ -172,12 +172,12 @@ class BleService {
         timeout: const Duration(seconds: 30),
       );
       debugPrint('[BLE] Scan started successfully');
-      return BleStartResult.success;
+      return (BleStartResult.success, null);
     } catch (e, st) {
       debugPrint('[BLE] startScan threw: $e');
       debugPrintStack(stackTrace: st);
       stopDiscovery();
-      return BleStartResult.error;
+      return (BleStartResult.error, e.toString());
     }
   }
 
@@ -187,7 +187,7 @@ class BleService {
     bool requestPermissions = true,
   }) async {
     final result = await startDiscoveryWithResult(provider);
-    return result == BleStartResult.success;
+    return result.$1 == BleStartResult.success;
   }
 
   void stopDiscovery() {

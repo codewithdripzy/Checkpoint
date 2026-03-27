@@ -51,7 +51,10 @@ class _HomeScreenState extends State<HomeScreen>
     final isCurrentlyScanning = provider.isScanning;
 
     if (!isCurrentlyScanning) {
-      final result = await _bleService.startDiscoveryWithResult(provider);
+      final resultRecord = await _bleService.startDiscoveryWithResult(provider);
+      final result = resultRecord.$1;
+      final errorMsg = resultRecord.$2;
+
       if (result == BleStartResult.success) {
         provider.setScanning(true);
         await CheckpointBackgroundService.startService();
@@ -62,7 +65,7 @@ class _HomeScreenState extends State<HomeScreen>
           BleStartResult.bluetoothOff =>
             'Please turn on Bluetooth and try again.',
           _ =>
-            'Failed to start scanning. Check logcat for details.',
+            errorMsg != null ? 'Failed: $errorMsg' : 'Failed to start scanning. Check logcat for details.',
         };
         messenger.showSnackBar(
           SnackBar(content: Text(message)),
@@ -119,12 +122,12 @@ class _HomeScreenState extends State<HomeScreen>
             tooltip: 'History',
             onPressed: () {},
           ),
-          IconButton(
-            icon: Icon(Icons.settings_rounded,
-                color: AppTheme.offWhite.withValues(alpha: 0.65), size: 22),
-            tooltip: 'Settings',
-            onPressed: () {},
-          ),
+          // IconButton(
+          //   icon: Icon(Icons.settings_rounded,
+          //       color: AppTheme.offWhite.withValues(alpha: 0.65), size: 22),
+          //   tooltip: 'Settings',
+          //   onPressed: () {},
+          // ),
           Padding(
             padding: const EdgeInsets.only(right: 12),
             child: _StatusBadge(isScanning: isScanning),
@@ -214,7 +217,7 @@ class _HomeScreenState extends State<HomeScreen>
                           ],
                         ),
                         borderRadius: const BorderRadius.vertical(
-                            top: Radius.circular(36)),
+                            top: Radius.circular(20)),
                         border: Border(
                           top: BorderSide(
                               color: AppTheme.borderBlue.withValues(alpha: 0.6),
@@ -247,7 +250,7 @@ class _HomeScreenState extends State<HomeScreen>
                           // ),
 
                           Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10.0),
+                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20.0),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
