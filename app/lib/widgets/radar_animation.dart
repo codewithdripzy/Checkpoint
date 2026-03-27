@@ -5,11 +5,14 @@ import '../providers/nearby_provider.dart';
 import '../utils/app_theme.dart';
 
 class RadarAnimation extends StatefulWidget {
+  const RadarAnimation({super.key});
+
   @override
   _RadarAnimationState createState() => _RadarAnimationState();
 }
 
-class _RadarAnimationState extends State<RadarAnimation> with SingleTickerProviderStateMixin {
+class _RadarAnimationState extends State<RadarAnimation>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
 
   @override
@@ -58,18 +61,18 @@ class _RadarAnimationState extends State<RadarAnimation> with SingleTickerProvid
               height: 80,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppTheme.primaryNeon.withOpacity(0.1),
+                color: AppTheme.primaryNeon.withValues(alpha: 0.10),
                 boxShadow: [
                   BoxShadow(
-                    color: AppTheme.primaryNeon.withOpacity(0.2),
+                    color: AppTheme.secondaryNeon.withValues(alpha: 0.28),
                     blurRadius: 30,
                     spreadRadius: 10,
                   ),
                 ],
               ),
               child: Icon(
-                Icons.flash_on,
-                color: AppTheme.primaryNeon,
+                Icons.radar,
+                color: AppTheme.secondaryNeon,
                 size: 40,
               ),
             ),
@@ -100,7 +103,7 @@ class RadarPainter extends CustomPainter {
       canvas.drawCircle(
         center,
         maxRadius * (i / 3),
-        ringPaint..color = Colors.white.withOpacity(0.05),
+        ringPaint..color = AppTheme.primaryNeon.withValues(alpha: 0.08),
       );
     }
 
@@ -131,13 +134,14 @@ class RadarPainter extends CustomPainter {
         Paint()
           ..shader = SweepGradient(
             colors: [
-              AppTheme.primaryNeon.withOpacity(0.2),
+              AppTheme.secondaryNeon.withValues(alpha: 0.25),
               Colors.transparent,
             ],
             stops: [0.1, 0.4],
-          ).createShader(Rect.fromCircle(center: Offset.zero, radius: maxRadius)),
+          ).createShader(
+              Rect.fromCircle(center: Offset.zero, radius: maxRadius)),
       );
-      
+
       // The sharp line
       canvas.drawLine(
         Offset.zero,
@@ -152,6 +156,7 @@ class RadarPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant RadarPainter oldDelegate) {
-    return oldDelegate.animationValue != animationValue || oldDelegate.progress != progress;
+    return oldDelegate.animationValue != animationValue ||
+        oldDelegate.progress != progress;
   }
 }

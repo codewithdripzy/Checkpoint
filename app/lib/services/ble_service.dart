@@ -11,6 +11,27 @@ class BleService {
 
   StreamSubscription<List<ScanResult>>? _scanSubscription;
 
+  Future<bool> _ensureBluetoothReady() async {
+    if (!Platform.isAndroid) return true;
+
+    if (await FlutterBluePlus.isSupported == false) return false;
+
+    try {
+      if (FlutterBluePlus.adapterStateNow != BluetoothAdapterState.on) {
+        await FlutterBluePlus.turnOn(timeout: 20);
+      }
+
+      final state = await FlutterBluePlus.adapterState
+          .where((s) => s == BluetoothAdapterState.on)
+          .first
+          .timeout(const Duration(seconds: 20));
+
+      return state == BluetoothAdapterState.on;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<bool> _hasBleRuntimePermissions() async {
     if (!Platform.isAndroid) return true;
 
@@ -49,6 +70,9 @@ class BleService {
       }
       if (!granted) return false;
 
+      final bluetoothReady = await _ensureBluetoothReady();
+      if (!bluetoothReady) return false;
+
       // 1. Start Advertising (Peripheral Role)
       final advertiseData = AdvertiseData(
         serviceUuid: serviceUuid,
@@ -56,9 +80,6 @@ class BleService {
       );
 
       await FlutterBlePeripheral().start(advertiseData: advertiseData);
-
-      // 2. Start Scanning (Central Role)
-      if (await FlutterBluePlus.isSupported == false) return false;
 
       // Listen to scan results
       _scanSubscription = FlutterBluePlus.onScanResults.listen((results) async {
@@ -80,7 +101,6 @@ class BleService {
       // Start scanning
       await FlutterBluePlus.startScan(
         withServices: [Guid(serviceUuid)],
-        timeout: const Duration(seconds: 15),
       );
       return true;
     } catch (_) {

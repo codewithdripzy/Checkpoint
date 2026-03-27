@@ -66,10 +66,16 @@ class _HomeScreenState extends State<HomeScreen> {
             left: -50,
             child: Container(
               width: 500,
-              height: 50,
+              height: 320,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppTheme.primaryNeon.withAlpha(5),
+                gradient: RadialGradient(
+                  colors: [
+                    AppTheme.primaryNeon.withValues(alpha: 0.15),
+                    AppTheme.secondaryNeon.withValues(alpha: 0.10),
+                    Colors.transparent,
+                  ],
+                ),
               ),
             ),
           ),
@@ -93,9 +99,16 @@ class _HomeScreenState extends State<HomeScreen> {
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(horizontal: 24),
                   decoration: BoxDecoration(
-                    color: AppTheme.cardDark.withOpacity(0.8),
+                    color: AppTheme.cardDark.withValues(alpha: 0.95),
                     borderRadius:
                         const BorderRadius.vertical(top: Radius.circular(40)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.primaryNeon.withValues(alpha: 0.10),
+                        blurRadius: 30,
+                        offset: const Offset(0, -6),
+                      ),
+                    ],
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -136,7 +149,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     child: ListTile(
                                       leading: CircleAvatar(
                                         backgroundColor: AppTheme.primaryNeon
-                                            .withOpacity(0.1),
+                                            .withValues(alpha: 0.1),
                                         child: Text(
                                           contact.name[0],
                                           style: TextStyle(
@@ -173,18 +186,34 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.large(
-        onPressed: () async => _toggleScanning(context),
-        backgroundColor: AppTheme.primaryNeon,
+      floatingActionButton: FloatingActionButton.small(
+        onPressed: () async {
+          final messenger = ScaffoldMessenger.of(context);
+          final provider = context.read<NearbyProvider>();
+          final wasScanning = provider.isScanning;
+          await _toggleScanning(context);
+          final isScanning = provider.isScanning;
+
+          if (!wasScanning && !isScanning && mounted) {
+            messenger.showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Unable to start radar. Ensure Bluetooth is ON and permissions are granted.',
+                ),
+              ),
+            );
+          }
+        },
+        backgroundColor: AppTheme.secondaryNeon,
         child: Icon(
           context.watch<NearbyProvider>().isScanning ? Icons.stop : Icons.radar,
-          color: Colors.black,
+          color: AppTheme.primaryNeon,
         ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       bottomNavigationBar: BottomAppBar(
         height: 60,
-        color: AppTheme.backgroundDark,
+        color: Colors.white,
         shape: const CircularNotchedRectangle(),
         notchMargin: 10,
         child: Row(
